@@ -1,13 +1,18 @@
 #!/bin/sh
 
+export DISPLAY=:0
+export XAUTHORITY=${HOME}/.Xauthority
 echo $$ > /tmp/barsh_id
 
 function bar_vol() {
-	export VOL=$( amixer | \
-	grep 'Front Left: Playback' | \
-	cut -d' ' -f 7- | \
-	tr '[]' ' ' | \
-	awk '{if ( $2 == "on" ) { print $1; } else { print 0; }}' )
+	if [ ! $(pacmd list-sinks | grep 'muted:' | grep yes) ] ; then
+		export VOL=$( pacmd dump-volumes | \
+			grep 'Sink' | \
+			cut -d/ -f 2| \
+			awk '{ vol = $1 } END { print vol }' )
+	else
+		export VOL='M';
+	fi
 }
 
 function bar_netw() {
@@ -34,16 +39,16 @@ function bar_pow() {
 
 function bar_redraw() {
 	bar_vol
-	bar_netw
 	bar_mem
 	bar_time
-	bar_pow
-	xsetroot -name "${VOL} ${SSID} ${MEM} ${TIME} ${POW}"
+	X=$(strings -a /proc/$(pgrep dwm)/environ | grep '^DISPLAY' | sed 's/DISPLAY=//')
+	DISPLAY=$X xsetroot -name "${VOL} ${MEM} ${TIME}"
 }
 
 function bar_force_redraw() {
 	bar_vol
-	xsetroot -name "${VOL} ${SSID} ${MEM} ${TIME} ${POW}"
+	X=$(strings -a /proc/$(pgrep dwm)/environ | grep '^DISPLAY' | sed 's/DISPLAY=//')
+	DISPLAY=$X xsetroot -name "${VOL} ${MEM} ${TIME}"
 }
 
 trap bar_force_redraw 12
